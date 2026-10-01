@@ -61,6 +61,22 @@ function prazoState(iso) {
     return null;
 }
 
+// ---------- ESPECIALIDADE (derivada do executor) ----------
+function getDisciplina(execucao) {
+    const nome = String(execucao || '').toLowerCase();
+    if (nome.includes('orivado')) return 'Mecânica';
+    if (nome.includes('henrique')) return 'Elétrica';
+    return 'Geral';
+}
+function discTag(d) {
+    const map = {
+        'Mecânica': '<span class="tag tag-mec">🔧 Mecânica</span>',
+        'Elétrica': '<span class="tag tag-ele">⚡ Elétrica</span>',
+        'Geral':    '<span class="tag tag-ger">🔩 Geral</span>'
+    };
+    return map[d] || map['Geral'];
+}
+
 // ---------- UNDO ----------
 function pushUndo(msg) {
     undoStack.push({
@@ -98,11 +114,15 @@ function initApp() {
                 for (const items of Object.values(dbData)) {
                     (items || []).forEach(it => {
                         if (it.imagem === true && !imgFlags[it.id]) imgFlags[it.id] = { antes: true };
+                        if (!it.disciplina) it.disciplina = getDisciplina(it.execucao);
                     });
                 }
             } else {
                 dbData = JSON.parse(JSON.stringify(initialData));
                 imgFlags = {};
+                for (const items of Object.values(dbData)) {
+                    (items || []).forEach(it => { it.disciplina = getDisciplina(it.execucao); });
+                }
                 await setDoc(MAIN_DOC, { ...dbData, _imgFlags: imgFlags });
             }
             buildNav();
@@ -127,7 +147,7 @@ async function saveData() {
     }
 }
 
-// ---------- NAVEGAÇÃO (bug corrigido: Visão Geral volta ao clicar) ----------
+// ---------- NAVEGAÇÃO ----------
 window.toggleSidebar = () => document.getElementById('sidebar').classList.toggle('open');
 
 function buildNav() {
@@ -180,7 +200,7 @@ function renderChartPie(canvasId, labels, values, colors, doughnut) {
 
 function updateDashboard() {
     let total=0, pend=0, and=0, con=0;
-    const conj={}, exec={};
+    const conj={}, exec={}, disc={};
     for (const [sheet, items] of Object.entries(dbData)) {
         items.forEach(it => {
             total++;
@@ -189,6 +209,8 @@ function updateDashboard() {
             else con++;
             const ex = it.execucao || 'Não Definido';
             exec[ex] = (exec[ex]||0)+1;
+            const di = it.disciplina || getDisciplina(it.execucao);
+            disc[di] = (disc[di]||0)+1;
         });
         conj[sheet] = items.length;
     }
@@ -204,6 +226,9 @@ function updateDashboard() {
         ['#f87171','#facc15','#4ade80'], false);
     renderChartPie('pieConjuntos', Object.keys(conj), Object.values(conj),
         Object.keys(conj).map((_, i) => PALETA[i % PALETA.length]), true);
+    const discOrder = ['Mecânica','Elétrica','Geral'].filter(d => disc[d]);
+    renderChartPie('pieDisciplina', discOrder, discOrder.map(d => disc[d]),
+        discOrder.map(d => d === 'Mecânica' ? '#84cc16' : d === 'Elétrica' ? '#facc15' : '#60a5fa'), true);
     renderBars('chart-executores', exec, 'var(--success)');
 
     const dl = [];
@@ -274,9 +299,10 @@ function renderKanban(sheet, items) {
             ${arr.map(it => {
                 const ph = imgFlags[it.id];
                 const ps = prazoState(it.prazo);
+                const di = it.disciplina || getDisciplina(it.execucao);
                 return `<div class="kcard" draggable="true" data-id="${esc(it.id)}">
                     <div class="kcard-title">${esc(it.acao)}</div>
-                    <div class="kcard-meta">${prioTag(it.prioridade)}
+                    <div class="kcard-meta">${discTag(di)}${prioTag(it.prioridade)}
                         ${ph && (ph.antes || ph.depois) ? '<span class="tag tag-photo">🖼️ foto</span>' : ''}
                         ${ps ? `<span class="tag tag-p-${ps.cls==='late'?'Crítica':'Alta'}">${ps.cls==='late'?'⏰ ATRASADO':'⏰ '+ps.txt}</span>` : ''}
                     </div>
@@ -296,7 +322,7 @@ function renderKanban(sheet, items) {
                 </div>`;
             }).join('')}
         </div>`).join('');
-};
+}
 window.updateStatus = function (sheet, id, newStatus) {
     const it = dbData[sheet]?.find(i => i.id === id);
     if (!it || it.status === newStatus) return;
@@ -307,14 +333,15 @@ window.updateStatus = function (sheet, id, newStatus) {
 };
 function renderList(sheet, items) {
     return `<table class="list-table"><thead><tr>
-        <th>Ação</th><th>Procedimento</th><th>Executor</th><th>Prioridade</th><th>Previsão</th><th>Status</th><th></th>
+        <th>Ação</th><th>Procedimento</th><th>Executor</th><th>Especialidade</th><th>Prioridade</th><th>Previsão</th><th>Status</th><th></th>
     </tr></thead><tbody>
     ${items.map(it => `<tr>
         <td data-label="Ação"><strong>${esc(it.acao)}</strong></td>
         <td data-label="Procedimento" style="color:var(--text-muted);font-size:12px">${esc(it.detalhamento||'-')}</td>
         <td data-label="Executor" style="width:130px"><input class="edit-input" value="${esc(it.execucao)}" onchange="updateField('${jsStr(sheet)}','${jsStr(it.id)}','execucao',this.value)"></td>
+        <td data-label="Especialidade">${discTag(it.disciplina || getDisciplina(it.execucao))}</td>
         <td data-label="Prioridade">${prioTag(it.prioridade)}</td>
-        <td data-label="Previsão"><input class="edit-input" value="${esc(it.prazo ? fmtPrazo(it.prazo) : (it.previsao || ''))}" onchange="updatePrevisao('${jsStr(sheet)}','${jsStr(it.id)}',this.value)"></td>
+        <td data-label="Previsão"><input class="edit-input" value="${esc(it.prazo ? fmtPrazo(it.prazo) : 'A DECIDIR')}" onchange="updatePrevisao('${jsStr(sheet)}','${jsStr(it.id)}',this.value)"></td>
         <td data-label="Status"><select class="status-select status-${statusCol(it.status)}" onchange="updateField('${jsStr(sheet)}','${jsStr(it.id)}','status',this.value)">${statusOptions(it.status)}</select></td>
         <td data-nolabel="1" style="display:flex;gap:6px;justify-content:flex-end;">
             <button class="btn-icon" onclick="openImageModal('${jsStr(sheet)}','${jsStr(it.id)}')">📷</button>
@@ -328,9 +355,15 @@ window.updatePrevisao = function (sheet, id, value) {
     const v = value.trim();
     const parsed = /^\d{2}\/\d{2}\/\d{4}$/.test(v) ? v.split('/').reverse().join('-') : v;
     pushUndo(`Alteração em "${it.acao}"`);
-    if (parsed.match(/^\d{4}-\d{2}-\d{2}$/)) { it.prazo = parsed; it.previsao = fmtPrazo(parsed); }
-    else { it.previsao = v; }
+    if (parsed.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        it.prazo = parsed;
+        it.previsao = fmtPrazo(parsed);
+    } else {
+        it.prazo = '';
+        it.previsao = v || 'A DECIDIR';
+    }
     saveData();
+    buildEquipView(sheet);
 };
 window.toggleView = function (btn, mode, sheet) {
     const wrap = btn.parentElement;
@@ -373,7 +406,9 @@ window.updateField = function (sheet, id, field, value) {
     const it = dbData[sheet]?.find(i => i.id === id);
     if (!it || it[field] === value) return;
     pushUndo(`Alteração em "${it.acao}"`);
-    it[field] = value; saveData();
+    it[field] = value;
+    if (field === 'execucao') it.disciplina = getDisciplina(value);
+    saveData();
 };
 window.deleteAction = function (sheet, id) {
     const it = dbData[sheet]?.find(i => i.id === id);
@@ -387,10 +422,8 @@ window.deleteAction = function (sheet, id) {
 window.openAddModal = function (sheet) {
     document.getElementById('modalConjuntoLabel').textContent = 'Novo Plano — ' + sheet;
     document.getElementById('novaConjunto').value = sheet;
-    ['novaAcao','novoDetalhe','novoLev','novoExec'].forEach(id => document.getElementById(id).value = '');
+    ['novaAcao','novoDetalhe','novoLev','novoExec','novoPrazo'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('novoPrioridade').value = 'Média';
-    document.getElementById('novoPrazo').value = '';
-    document.getElementById('novaPrev').value = 'A DECIDIR';
     document.getElementById('addModal').classList.add('open');
 };
 window.saveNewAction = function () {
@@ -398,15 +431,19 @@ window.saveNewAction = function () {
     const acao = document.getElementById('novaAcao').value.trim();
     if (!acao) { alert('A Ação Necessária é obrigatória.'); return; }
     if (!dbData[sheet]) { alert('Conjunto inválido.'); return; }
+    const execucao = document.getElementById('novoExec').value.trim() || 'Não Definido';
+    const prazo = document.getElementById('novoPrazo').value || '';
     pushUndo(`Novo plano criado: "${acao}"`);
     dbData[sheet].push({
         id: sheet.replace(/ /g,'') + '_' + Date.now(),
-        acao, detalhamento: document.getElementById('novoDetalhe').value.trim(),
+        acao,
+        detalhamento: document.getElementById('novoDetalhe').value.trim(),
         levantamento: document.getElementById('novoLev').value.trim(),
-        execucao: document.getElementById('novoExec').value.trim() || 'Não Definido',
+        execucao,
+        disciplina: getDisciplina(execucao),
         prioridade: document.getElementById('novoPrioridade').value,
-        prazo: document.getElementById('novoPrazo').value,
-        previsao: document.getElementById('novaPrev').value.trim() || 'A DECIDIR',
+        prazo,
+        previsao: prazo ? fmtPrazo(prazo) : 'A DECIDIR',
         status: 'Pendente'
     });
     closeModal('addModal'); saveData(); buildEquipView(sheet);
@@ -540,15 +577,15 @@ window.openCompare = async function () {
 window.moveCompare = (v) => { document.getElementById('cmpBeforeWrap').style.width = v + '%'; };
 window.closeCompare = () => document.getElementById('compareOverlay').classList.remove('open');
 
-// ---------- EXPORT / RESET ----------
+// ---------- EXPORT ----------
 window.exportCSV = function () {
-    const rows = [["Conjunto","Ação","Detalhamento","Levantamento","Executor","Prioridade","Prazo","Previsão","Status","Fotos"]];
+    const rows = [["Conjunto","Ação","Detalhamento","Levantamento","Executor","Especialidade","Prioridade","Previsão","Status","Fotos"]];
     for (const [sheet, items] of Object.entries(dbData)) {
         items.forEach(it => {
             const f = imgFlags[it.id] || {};
             rows.push([sheet, it.acao||'', it.detalhamento||'', it.levantamento||'',
-                it.execucao||'', it.prioridade||'', it.prazo?fmtPrazo(it.prazo):'',
-                it.previsao||'', it.status||'',
+                it.execucao||'', it.disciplina || getDisciplina(it.execucao),
+                it.prioridade||'', it.previsao||'', it.status||'',
                 [f.antes?'ANTES':null, f.depois?'DEPOIS':null].filter(Boolean).join('+') || 'NÃO']);
         });
     }
@@ -559,13 +596,6 @@ window.exportCSV = function () {
     a.download = 'Relatorio_SERAC1.csv';
     document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(a.href);
-};
-window.resetData = function () {
-    if (confirm('ATENÇÃO: restaura as ações originais na nuvem para todos. Prosseguir?')) {
-        pushUndo('Restauração de fábrica');
-        dbData = JSON.parse(JSON.stringify(initialData));
-        saveData(); refreshUI();
-    }
 };
 
 // datalist de executores
