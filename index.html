@@ -22,6 +22,7 @@
     </nav>
     <div class="sidebar-footer">
         <button class="btn btn-glass" onclick="exportCSV()">⬇️ Exportar Excel</button>
+        
     </div>
 </aside>
 
@@ -117,7 +118,7 @@
 <!-- LIGHTBOX ZOOM -->
 <div id="lightbox" class="lightbox" onclick="if(event.target===this)closeLightbox()">
     <div class="lb-toolbar">
-        <button onclick="zoomSet(0.4)">➖</button><button onclick="zoomSet(-0.4)">➕</button>
+        <button onclick="zoomSet(-0.4)">➖</button><button onclick="zoomSet(0.4)">➕</button>
         <button onclick="zoomReset()">↺</button><button onclick="closeLightbox()">✕</button>
     </div>
     <div class="lb-stage" id="lbStage"><img id="lbImg" src="" alt=""></div>
