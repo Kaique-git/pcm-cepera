@@ -22,7 +22,6 @@
     </nav>
     <div class="sidebar-footer">
         <button class="btn btn-glass" onclick="exportCSV()">⬇️ Exportar Excel</button>
-        
     </div>
 </aside>
 
@@ -57,9 +56,15 @@
                 <canvas id="pieConjuntos" height="220"></canvas>
             </div>
         </div>
-        <div class="glass-card">
-            <div class="card-head"><h3>👷 Carga por Executor</h3></div>
-            <div id="chart-executores"></div>
+        <div class="grid-2">
+            <div class="glass-card">
+                <div class="card-head"><h3>🔧⚡ Mecânica vs. Elétrica</h3></div>
+                <canvas id="pieDisciplina" height="220"></canvas>
+            </div>
+            <div class="glass-card">
+                <div class="card-head"><h3>👷 Carga por Executor</h3></div>
+                <div id="chart-executores"></div>
+            </div>
         </div>
     </section>
 
@@ -79,8 +84,7 @@
             <div class="form-group"><label>Executor / Responsável</label><input id="novoExec" type="text" list="execList" placeholder="Selecione ou digite"><datalist id="execList"></datalist></div>
             <div class="form-group"><label>Prioridade</label>
                 <select id="novoPrioridade"><option>Média</option><option>Baixa</option><option>Alta</option><option>Crítica</option></select></div>
-            <div class="form-group"><label>Prazo (data)</label><input id="novoPrazo" type="date"></div>
-            <div class="form-group"><label>Previsão (texto livre)</label><input id="novaPrev" type="text" value="A DECIDIR"></div>
+            <div class="form-group"><label>Previsão (data — opcional)</label><input id="novoPrazo" type="date"></div>
         </div>
         <div class="modal-actions">
             <button class="btn btn-cancel" onclick="closeModal('addModal')">Cancelar</button>
