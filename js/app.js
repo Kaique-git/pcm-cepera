@@ -280,6 +280,12 @@ function renderKanban(sheet, items) {
                         ${ph && (ph.antes || ph.depois) ? '<span class="tag tag-photo">🖼️ foto</span>' : ''}
                         ${ps ? `<span class="tag tag-p-${ps.cls==='late'?'Crítica':'Alta'}">${ps.cls==='late'?'⏰ ATRASADO':'⏰ '+ps.txt}</span>` : ''}
                     </div>
+                    <div class="kcard-status">
+                        <select class="status-select status-${statusCol(it.status)}"
+                            onchange="updateStatus('${jsStr(sheet)}','${jsStr(it.id)}',this.value)">
+                            ${statusOptions(it.status)}
+                        </select>
+                    </div>
                     <div class="kcard-foot">
                         <span>👤 ${esc(it.execucao||'—')}</span>
                         <div class="kcard-actions">
@@ -290,19 +296,28 @@ function renderKanban(sheet, items) {
                 </div>`;
             }).join('')}
         </div>`).join('');
-}
+};
+window.updateStatus = function (sheet, id, newStatus) {
+    const it = dbData[sheet]?.find(i => i.id === id);
+    if (!it || it.status === newStatus) return;
+    pushUndo(`Status alterado: "${it.acao}" → ${newStatus}`);
+    it.status = newStatus;
+    saveData();
+    buildEquipView(sheet);
+};
 function renderList(sheet, items) {
     return `<table class="list-table"><thead><tr>
         <th>Ação</th><th>Procedimento</th><th>Executor</th><th>Prioridade</th><th>Previsão</th><th>Status</th><th></th>
     </tr></thead><tbody>
     ${items.map(it => `<tr>
-        <td><strong>${esc(it.acao)}</strong></td>
-        <td style="color:var(--text-muted);font-size:12px">${esc(it.detalhamento||'-')}</td>
-        <td style="width:130px"><input class="edit-input" value="${esc(it.execucao)}" onchange="updateField('${jsStr(sheet)}','${jsStr(it.id)}','execucao',this.value)"></td>
-        <td>${prioTag(it.prioridade)}</td>
-        <td style="width:110px"><input class="edit-input" value="${esc(it.prazo ? fmtPrazo(it.prazo) : (it.previsao || ''))}" onchange="updatePrevisao('${jsStr(sheet)}','${jsStr(it.id)}',this.value)"></td>
-        <td><select class="status-select status-${statusCol(it.status)}" onchange="updateField('${jsStr(sheet)}','${jsStr(it.id)}','status',this.value)">${statusOptions(it.status)}</select></td>
-        <td><button class="btn-icon" onclick="openImageModal('${jsStr(sheet)}','${jsStr(it.id)}')">📷</button>
+        <td data-label="Ação"><strong>${esc(it.acao)}</strong></td>
+        <td data-label="Procedimento" style="color:var(--text-muted);font-size:12px">${esc(it.detalhamento||'-')}</td>
+        <td data-label="Executor" style="width:130px"><input class="edit-input" value="${esc(it.execucao)}" onchange="updateField('${jsStr(sheet)}','${jsStr(it.id)}','execucao',this.value)"></td>
+        <td data-label="Prioridade">${prioTag(it.prioridade)}</td>
+        <td data-label="Previsão"><input class="edit-input" value="${esc(it.prazo ? fmtPrazo(it.prazo) : (it.previsao || ''))}" onchange="updatePrevisao('${jsStr(sheet)}','${jsStr(it.id)}',this.value)"></td>
+        <td data-label="Status"><select class="status-select status-${statusCol(it.status)}" onchange="updateField('${jsStr(sheet)}','${jsStr(it.id)}','status',this.value)">${statusOptions(it.status)}</select></td>
+        <td data-nolabel="1" style="display:flex;gap:6px;justify-content:flex-end;">
+            <button class="btn-icon" onclick="openImageModal('${jsStr(sheet)}','${jsStr(it.id)}')">📷</button>
             <button class="btn-icon" onclick="deleteAction('${jsStr(sheet)}','${jsStr(it.id)}')">🗑️</button></td>
     </tr>`).join('')}
     </tbody></table>`;
