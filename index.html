@@ -16,6 +16,7 @@
         <div><h2>SERAC 1</h2><span>Planos de Ação · PCM</span></div>
     </div>
     <nav id="nav">
+        <button class="nav-btn" data-view="menu" data-label="Menu"><span>🏠</span> Menu</button>
         <button class="nav-btn active" data-view="dashboard" data-label="Visão Geral"><span>📊</span> Visão Geral</button>
         <div class="nav-label">Equipamentos</div>
         <div id="nav-equipamentos"></div>
@@ -29,7 +30,7 @@
     <header id="topbar">
         <div class="topbar-left">
             <button class="btn-icon-mobile" onclick="toggleSidebar()">☰</button>
-            <h1 id="pageTitle">Visão Geral</h1>
+            <h1 id="pageTitle">Menu</h1>
         </div>
         <div class="kpi-chips">
             <div class="chip"><span class="chip-num" id="chip-total">0</span><span class="chip-label">Ações</span></div>
@@ -40,10 +41,33 @@
         </div>
     </header>
 
+    <!-- MENU (HOME) -->
+    <section id="view-menu" class="view active">
+        <div class="menu-hero glass-card">
+            <img src="img/logo-cepera.png" alt="Cepêra" class="menu-logo">
+            <div class="menu-hero-txt">
+                <h2>PCM SERAC 1</h2>
+                <span>Command Center · Cepêra</span>
+            </div>
+            <div id="menu-resumo" class="menu-resumo"></div>
+        </div>
+        <div class="menu-actions">
+            <button class="btn btn-primary" onclick="goMenuAction('dashboard')">📊 Visão Geral</button>
+            <button class="btn btn-glass" onclick="goMenuAction('novo')">➕ Novo Plano</button>
+            <button class="btn btn-glass" onclick="exportCSV()">⬇️ Exportar</button>
+        </div>
+        <div class="menu-label">Equipamentos</div>
+        <div id="menu-equipamentos" class="menu-grid"></div>
+    </section>
+
     <!-- VISÃO GERAL -->
-    <section id="view-dashboard" class="view active">
+    <section id="view-dashboard" class="view">
         <div class="glass-card critical-zone">
-            <div class="card-head"><h3>🎯 Prazos Críticos (atrasados / próximos 14 dias)</h3></div>
+            <div class="card-head card-head-toggle">
+                <h3>🎯 Prazos Críticos (atrasados / próximos 30 dias)</h3>
+                <button id="dlToggle" class="btn btn-glass btn-toggle" onclick="toggleDeadlines()" style="display:none;">👁️ Ver todas</button>
+            </div>
+            <div id="dlSummary" class="dl-summary" style="display:none;"></div>
             <div id="deadlines-list" class="deadline-list"></div>
         </div>
         <div class="grid-2">
@@ -78,6 +102,10 @@
         <div class="modal-head"><h3 id="modalConjuntoLabel">Novo Plano de Ação</h3><button class="btn-icon" onclick="closeModal('addModal')">✕</button></div>
         <input type="hidden" id="novaConjunto">
         <div class="form-grid">
+            <div class="form-group span2" id="conjunto-picker" style="display:none;">
+                <label>Equipamento *</label>
+                <select id="novaConjuntoSel"></select>
+            </div>
             <div class="form-group span2"><label>Ação Necessária *</label><input id="novaAcao" type="text" placeholder="Ex.: Substituir cilindro pneumático"></div>
             <div class="form-group span2"><label>Procedimento Detalhado</label><textarea id="novoDetalhe" rows="3" placeholder="Descreva o procedimento..."></textarea></div>
             <div class="form-group"><label>Levantamento</label><input id="novoLev" type="text" placeholder="Quem identificou"></div>
