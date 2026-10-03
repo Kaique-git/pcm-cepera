@@ -3,172 +3,71 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>P.A. SERAC 1 — Painel Executivo PCM · Cepêra</title>
+<title>Portfólio PCM · Cepêra</title>
 <link rel="icon" type="image/png" href="img/logo-cepera.png">
-<link rel="stylesheet" href="css/style.css">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root {
+    --bg-grad: linear-gradient(135deg, #071a0e 0%, #0d2b16 50%, #123a1c 100%);
+    --glass: rgba(255,255,255,0.08);
+    --glass-border: rgba(163,230,53,0.22);
+    --text: #f1f5f9;
+    --text-muted: #9fb8a4;
+    --primary: #84cc16;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+body { background: var(--bg-grad) fixed; color: var(--text); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+main { width: 100%; max-width: 860px; }
+.hero { display: flex; align-items: center; gap: 18px; margin-bottom: 28px; flex-wrap: wrap; }
+.hero img { width: 72px; height: 72px; border-radius: 16px; object-fit: contain; background: rgba(255,255,255,.92); padding: 6px; box-shadow: 0 0 24px rgba(163,230,53,.4); }
+.hero h1 { font-size: 30px; background: linear-gradient(90deg, #ffffff, #bef264); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.hero span { display: block; font-size: 13px; color: var(--text-muted); }
+.label { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); margin: 0 4px 12px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+.card { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; background: var(--glass); border: 1px solid var(--glass-border); border-radius: 16px; padding: 22px; backdrop-filter: blur(14px); box-shadow: 0 8px 32px rgba(0,0,0,.25); text-decoration: none; color: var(--text); transition: transform .2s, border-color .2s; }
+.card:hover { transform: translateY(-4px); border-color: var(--primary); }
+.card .ico { font-size: 34px; }
+.card .name { font-size: 19px; font-weight: 700; }
+.card .desc { font-size: 12.5px; color: var(--text-muted); }
+.card .go { margin-top: 10px; font-size: 13px; font-weight: 700; color: #bef264; }
+.card.soon { opacity: .55; border-style: dashed; cursor: default; }
+.card.soon:hover { transform: none; border-color: var(--glass-border); }
+.foot { margin-top: 26px; text-align: center; font-size: 11px; color: var(--text-muted); }
+@media (max-width: 640px) {
+    .hero { flex-direction: column; text-align: center; }
+    .card { padding: 18px; }
+}
+</style>
 </head>
 <body>
-
-<aside id="sidebar">
-    <div class="brand">
-        <img src="img/logo-cepera.png" alt="Cepêra" class="brand-logo-img">
-        <div><h2>SERAC 1</h2><span>Planos de Ação · PCM</span></div>
+<main>
+    <div class="hero">
+        <img src="img/logo-cepera.png" alt="Cepêra">
+        <div>
+            <h1>Portfólio PCM</h1>
+            <span>Command Center · Cepêra Alimentos</span>
+        </div>
     </div>
-    <nav id="nav">
-        <button class="nav-btn" data-view="menu" data-label="Menu"><span>🏠</span> Menu</button>
-        <button class="nav-btn active" data-view="dashboard" data-label="Visão Geral"><span>📊</span> Visão Geral</button>
-        <div class="nav-label">Equipamentos</div>
-        <div id="nav-equipamentos"></div>
-    </nav>
-    <div class="sidebar-footer">
-        <button class="btn btn-glass" onclick="exportCSV()">⬇️ Exportar Excel</button>
+    <div class="label">Projetos</div>
+    <div class="grid">
+        <a class="card" href="serac1/index.html">
+            <span class="ico">📊</span>
+            <span class="name">SERAC 1</span>
+            <span class="desc">Planos de Ação · Kanban · Prazos Críticos</span>
+            <span class="go">Abrir →</span>
+        </a>
+        <a class="card" href="demandas/index.html">
+            <span class="ico">📋</span>
+            <span class="name">Demandas PCM</span>
+            <span class="desc">Controle de demandas · Responsáveis e Setores</span>
+            <span class="go">Abrir →</span>
+        </a>
+        <div class="card soon">
+            <span class="ico">🟢</span>
+            <span class="name">Novos projetos</span>
+            <span class="desc">Próximos sub-apps entram aqui</span>
+        </div>
     </div>
-</aside>
-
-<main id="main">
-    <header id="topbar">
-        <div class="topbar-left">
-            <button class="btn-icon-mobile" onclick="toggleSidebar()">☰</button>
-            <h1 id="pageTitle">Menu</h1>
-        </div>
-        <div class="kpi-chips">
-            <div class="chip"><span class="chip-num" id="chip-total">0</span><span class="chip-label">Ações</span></div>
-            <div class="chip chip-red"><span class="chip-num" id="chip-pendente">0</span><span class="chip-label">Pendentes</span></div>
-            <div class="chip chip-amber"><span class="chip-num" id="chip-emandamento">0</span><span class="chip-label">Em Andamento</span></div>
-            <div class="chip chip-green"><span class="chip-num" id="chip-concluido">0</span><span class="chip-label">Concluídas</span></div>
-            <div class="chip chip-progress"><div class="ring" id="ring-progress"><span id="ring-num">0%</span></div><span class="chip-label">Conclusão</span></div>
-        </div>
-    </header>
-
-    <!-- MENU (HOME) -->
-    <section id="view-menu" class="view active">
-        <div class="menu-hero glass-card">
-            <img src="img/logo-cepera.png" alt="Cepêra" class="menu-logo">
-            <div class="menu-hero-txt">
-                <h2>PCM SERAC 1</h2>
-                <span>Command Center · Cepêra</span>
-            </div>
-            <div id="menu-resumo" class="menu-resumo"></div>
-        </div>
-        <div class="menu-actions">
-            <button class="btn btn-primary" onclick="goMenuAction('dashboard')">📊 Visão Geral</button>
-            <button class="btn btn-glass" onclick="goMenuAction('novo')">➕ Novo Plano</button>
-            <button class="btn btn-glass" onclick="exportCSV()">⬇️ Exportar</button>
-        </div>
-        <div class="menu-label">Equipamentos</div>
-        <div id="menu-equipamentos" class="menu-grid"></div>
-    </section>
-
-    <!-- VISÃO GERAL -->
-    <section id="view-dashboard" class="view">
-        <div class="glass-card critical-zone">
-            <div class="card-head card-head-toggle">
-                <h3>🎯 Prazos Críticos (atrasados / próximos 30 dias)</h3>
-                <button id="dlToggle" class="btn btn-glass btn-toggle" onclick="toggleDeadlines()" style="display:none;">👁️ Ver todas</button>
-            </div>
-            <div id="dlSummary" class="dl-summary" style="display:none;"></div>
-            <div id="deadlines-list" class="deadline-list"></div>
-        </div>
-        <div class="grid-2">
-            <div class="glass-card">
-                <div class="card-head"><h3>🥧 Distribuição por Status</h3></div>
-                <canvas id="pieStatus" height="220"></canvas>
-            </div>
-            <div class="glass-card">
-                <div class="card-head"><h3>🍩 Ações por Equipamento</h3></div>
-                <canvas id="pieConjuntos" height="220"></canvas>
-            </div>
-        </div>
-        <div class="grid-2">
-            <div class="glass-card">
-                <div class="card-head"><h3>🔧⚡ Mecânica vs. Elétrica</h3></div>
-                <canvas id="pieDisciplina" height="220"></canvas>
-            </div>
-            <div class="glass-card">
-                <div class="card-head"><h3>👷 Carga por Executor</h3></div>
-                <div id="chart-executores"></div>
-            </div>
-        </div>
-    </section>
-
-    <!-- SEÇÕES DE EQUIPAMENTO (geradas via JS) -->
-    <div id="view-tables"></div>
+    <div class="foot">PCM · Cepêra Alimentos — gestão integrada de manutenção</div>
 </main>
-
-<!-- MODAL: NOVO PLANO RICO -->
-<div id="addModal" class="modal-overlay">
-    <div class="glass-modal">
-        <div class="modal-head"><h3 id="modalConjuntoLabel">Novo Plano de Ação</h3><button class="btn-icon" onclick="closeModal('addModal')">✕</button></div>
-        <input type="hidden" id="novaConjunto">
-        <div class="form-grid">
-            <div class="form-group span2" id="conjunto-picker" style="display:none;">
-                <label>Equipamento *</label>
-                <select id="novaConjuntoSel"></select>
-            </div>
-            <div class="form-group span2"><label>Ação Necessária *</label><input id="novaAcao" type="text" placeholder="Ex.: Substituir cilindro pneumático"></div>
-            <div class="form-group span2"><label>Procedimento Detalhado</label><textarea id="novoDetalhe" rows="3" placeholder="Descreva o procedimento..."></textarea></div>
-            <div class="form-group"><label>Levantamento</label><input id="novoLev" type="text" placeholder="Quem identificou"></div>
-            <div class="form-group"><label>Executor / Responsável</label><input id="novoExec" type="text" list="execList" placeholder="Selecione ou digite"><datalist id="execList"></datalist></div>
-            <div class="form-group"><label>Prioridade</label>
-                <select id="novoPrioridade"><option>Média</option><option>Baixa</option><option>Alta</option><option>Crítica</option></select></div>
-            <div class="form-group"><label>Previsão (data — opcional)</label><input id="novoPrazo" type="date"></div>
-        </div>
-        <div class="modal-actions">
-            <button class="btn btn-cancel" onclick="closeModal('addModal')">Cancelar</button>
-            <button class="btn btn-primary" onclick="saveNewAction()">✅ Criar Plano</button>
-        </div>
-    </div>
-</div>
-
-<!-- MODAL: GALERIA DE FOTOS -->
-<div id="imageModal" class="modal-overlay">
-    <div class="glass-modal">
-        <div class="modal-head"><h3>🖼️ Fotos do Plano</h3><button class="btn-icon" onclick="closeModal('imageModal')">✕</button></div>
-        <input type="hidden" id="imageSheetRef"><input type="hidden" id="imageIdRef">
-        <div class="photo-slots">
-            <div class="photo-slot">
-                <span class="slot-tag tag-before">ANTES</span>
-                <div id="slotBefore" class="slot-body"></div>
-            </div>
-            <div class="photo-slot">
-                <span class="slot-tag tag-after">DEPOIS</span>
-                <div id="slotAfter" class="slot-body"></div>
-            </div>
-        </div>
-        <div id="compareZone" style="display:none;">
-            <button class="btn btn-primary" onclick="openCompare()">🔀 Comparar Antes/Depois</button>
-        </div>
-        <div class="upload-row">
-            <input type="file" id="imageInput" accept="image/*">
-            <select id="uploadSlot"><option value="antes">Enviar como ANTES</option><option value="depois">Enviar como DEPOIS</option></select>
-            <button class="btn btn-primary" onclick="processImageUpload()">⬆️ Enviar</button>
-        </div>
-    </div>
-</div>
-
-<!-- LIGHTBOX ZOOM -->
-<div id="lightbox" class="lightbox" onclick="if(event.target===this)closeLightbox()">
-    <div class="lb-toolbar">
-        <button onclick="zoomSet(-0.4)">➖</button><button onclick="zoomSet(0.4)">➕</button>
-        <button onclick="zoomReset()">↺</button><button onclick="closeLightbox()">✕</button>
-    </div>
-    <div class="lb-stage" id="lbStage"><img id="lbImg" src="" alt=""></div>
-</div>
-
-<!-- COMPARE ANTES/DEPOIS -->
-<div id="compareOverlay" class="lightbox" onclick="if(event.target===this)closeCompare()">
-    <div class="lb-toolbar"><button onclick="closeCompare()">✕ Fechar</button></div>
-    <div class="cmp-wrap" id="cmpWrap">
-        <img id="cmpAfter" src="" alt="depois">
-        <div class="cmp-before" id="cmpBeforeWrap"><img id="cmpBefore" src="" alt="antes"></div>
-        <input type="range" id="cmpRange" min="0" max="100" value="50" oninput="moveCompare(this.value)">
-    </div>
-</div>
-
-<!-- TOAST UNDO -->
-<div id="undoToast" class="toast"><span id="toastMsg"></span><button class="btn btn-undo" onclick="doUndo()">↩ Desfazer</button></div>
-
-<script type="module" src="js/app.js"></script>
 </body>
 </html>

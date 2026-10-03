@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controle de Pendências de Demandas | PCM Manutenção</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="titulo">
+    <h1>Controle de Pendências de Demandas</h1>
+    <p>Acompanhamento operacional de ordens, reparos, melhorias e materiais</p>
+  </div>
+  <div class="acoes">
+    <button onclick="location.href='../'" title="Voltar ao Portfólio PCM">🏠 Menu</button>
+    <button id="btnNotificarTodos" onclick="notificarPendentes()">✉️ Notificar Pendentes</button>
+    <button onclick="exportarExcel()">📊 Exportar Excel</button>
+    <button onclick="window.print()">🖨️ Imprimir / PDF</button>
+    <button class="primario" onclick="abrirMDemanda()">➕ Nova Demanda</button>
+    <button id="btnTema" title="Alternar tema claro/escuro" onclick="alternarTema()">🌙</button>
+  </div>
+</header>
+<nav class="abas">
+  <button class="aba ativa" data-aba="demandas" onclick="trocarAba('demandas')">📋 Demandas <span class="mini-badge" id="abTotal">0</span></button>
+  <button class="aba" data-aba="consulta" onclick="trocarAba('consulta')">🔍 Consulta por Responsável / Setor</button>
+  <button class="aba" data-aba="graficos" onclick="trocarAba('graficos')">📈 Gráficos <span class="mini-badge" id="abTotal2">0</span></button>
+  <button class="aba" data-aba="cadastros" onclick="trocarAba('cadastros')">🏷️ Cadastros</button>
+</nav>
+<main>
+  <!-- ================= ABA DEMANDAS ================= -->
+  <section id="tab-demandas" class="tab ativa">
+    <div class="kpis">
+      <div class="kpi"><span id="kpiAtivas">0</span><small>Pendências Ativas</small></div>
+      <div class="kpi"><span id="kpiExec">0</span><small>Em Execução</small></div>
+      <div class="kpi atras"><span id="kpiAtras">0</span><small>Demandas Atrasadas</small></div>
+      <div class="kpi ok"><span id="kpiMes">0</span><small>Concluídas no Mês</small></div>
+    </div>
+    <div class="card filtros">
+      <input id="fBusca" placeholder="🔍 Buscar por Título, Descrição ou Responsável">
+      <div class="grid-filtros">
+        <select id="fStatus"></select>
+        <select id="fPrior"></select>
+        <select id="fResp"></select>
+        <select id="fSetor"></select>
+        <select id="fPrazo">
+          <option value="">Filtro de Prazo: Todos</option>
+          <option value="atrasadas">Atrasadas</option>
+          <option value="hoje">Vence hoje</option>
+          <option value="semana">Esta semana</option>
+          <option value="prazo">No prazo</option>
+        </select>
+        <select id="fAnexos">
+          <option value="">Anexos: Todos</option>
+          <option value="com">Com anexo</option>
+          <option value="sem">Sem anexo</option>
+        </select>
+        <select id="fOrdenar">
+          <option value="prazo">Ordenar por: Prazo</option>
+          <option value="prioridade">Prioridade</option>
+          <option value="recente">Recente</option>
+          <option value="titulo">Título</option>
+        </select>
+        <div class="datas">
+          <label>Prazo entre</label><input type="date" id="fDe"><label>até</label><input type="date" id="fAte">
+          <button onclick="limparDatas()">Limpar Datas</button>
+        </div>
+      </div>
+      <div class="linha-filtros">
+        <button onclick="resetFiltros()">Restaurar Filtros Padrão</button>
+        <span class="contador" id="fContador"></span>
+      </div>
+    </div>
+    <div id="listaDemandas"></div>
+    <div class="rodape-lista card">
+      <span>Total de Demandas: <b id="rkTotal">0</b></span>
+      <span class="atras">Atrasadas: <b id="rkAtras">0</b></span>
+      <span>Em Andamento: <b id="rkAndam">0</b></span>
+      <span class="ok">Concluídas: <b id="rkConcl">0</b></span>
+    </div>
+  </section>
+  <!-- ================= ABA CONSULTA ================= -->
+  <section id="tab-consulta" class="tab">
+    <div class="card filtros">
+      <div class="modo-sel">
+        <button id="cModoResp" class="modo ativo" onclick="setModoConsulta('resp')">👤 Por Responsável</button>
+        <button id="cModoSetor" class="modo" onclick="setModoConsulta('setor')">🏭 Por Setor / Área</button>
+      </div>
+      <div class="grid-filtros">
+        <select id="cAlvo"><option value="">Todos</option></select>
+        <input id="cBusca" placeholder="🔍 Buscar nesta consulta (título/descrição)">
+        <button onclick="expandirTodos(true)">⬇️ Expandir Todos</button>
+        <button onclick="expandirTodos(false)">⬆️ Recolher Todos</button>
+      </div>
+    </div>
+    <div id="consultaLista"></div>
+  </section>
+  <!-- ================= ABA GRÁFICOS ================= -->
+  <section id="tab-graficos" class="tab">
+    <div id="gIndicadores" class="kpis"></div>
+    <div id="gContainer"></div>
+  </section>
+  <!-- ================= ABA CADASTROS ================= -->
+  <section id="tab-cadastros" class="tab">
+    <h2>⚙️ Gestão de Cadastros e Equipe</h2>
+    <p class="sub">Cadastre responsáveis técnicos, vincule e-mails para notificações e configure os setores da fábrica</p>
+    <div class="duas-col">
+      <div class="card">
+        <h3>👤 Responsáveis Técnicos <span class="contador" id="cResp"></span></h3>
+        <p class="dica">💡 O e-mail habilita envio de relatórios e notificações automáticas via cliente padrão (mailto:)</p>
+        <div class="linha-form"><input id="rNome" placeholder="Nome do responsável"><input id="rEmail" placeholder="E-mail" type="email"><button class="primario" onclick="addResp()">➕ Cadastrar Responsável</button></div>
+        <div id="lResp"></div>
+      </div>
+      <div class="card">
+        <h3>🏷️ Setores / Especialidades <span class="contador" id="cSet"></span></h3>
+        <div class="linha-form"><input id="sNome" placeholder="Nome do setor"><button class="primario" onclick="addSetor()">➕ Cadastrar Setor</button></div>
+        <div id="lSetores"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>🗂️ Opções de Status e Prioridade</h3>
+      <p class="dica">Personalize as opções disponíveis nos campos de status e prioridade das demandas</p>
+      <div class="duas-col">
+        <div>
+          <h4>Status</h4>
+          <div class="linha-form"><input id="oStatusNome" placeholder="Nova opção de status"><select id="oStatusCor"></select><button onclick="addOpcao('status')">➕ Adicionar Status</button></div>
+          <div id="lOptStatus" class="lista-opcoes"></div>
+        </div>
+        <div>
+          <h4>Prioridade</h4>
+          <div class="linha-form"><input id="oPriorNome" placeholder="Nova opção de prioridade"><select id="oPriorCor"></select><button onclick="addOpcao('prioridade')">➕ Adicionar Prioridade</button></div>
+          <div id="lOptPrioridade" class="lista-opcoes"></div>
+        </div>
+      </div>
+      <button onclick="restaurarOpcoes()">↩️ Restaurar Padrão</button>
+    </div>
+  </section>
+</main>
+<footer>
+  PCM Manutenção Industrial • <span id="indConexao">🟡 Modo local (localStorage)</span> •
+  💾 <span id="usoArm">Calculando espaço...</span> • Dados salvos automaticamente
+</footer>
+<!-- ============ MODAL NOVA/EDITAR DEMANDA ============ -->
+<div id="mDemanda" class="modal">
+  <div class="modal-box">
+    <h3 id="mdTitulo">Nova Demanda de Manutenção</h3>
+    <input id="dTitulo" placeholder="Título da Demanda *">
+    <div class="grid2">
+      <select id="dResp"></select>
+      <select id="dSetor"></select>
+      <select id="dPrior"></select>
+      <input type="date" id="dPrazo">
+      <select id="dStatus"></select>
+    </div>
+    <textarea id="dDesc" rows="4" placeholder="Descrição Detalhada / Sintoma / Ações"></textarea>
+    <div id="dropZone" class="dropzone">📎 Arraste arquivos aqui, clique para selecionar ou cole uma imagem com Ctrl+V
+      <input type="file" id="dArquivos" multiple hidden accept=".jpg,.jpeg,.png,.pdf,.docx,.xlsx,.txt">
+    </div>
+    <div id="dListaAnexos" class="lista-anexos"></div>
+    <div class="modal-acoes">
+      <button onclick="notificarDoForm()">✉️ Notificar Responsável</button>
+      <button onclick="fecharMDemanda()">Cancelar</button>
+      <button class="primario" onclick="salvarDemanda()">Salvar Demanda</button>
+    </div>
+  </div>
+</div>
+<!-- ============ MODAL GENÉRICO ============ -->
+<div id="modal" class="modal">
+  <div class="modal-box">
+    <h3 id="modalTitulo"></h3>
+    <div id="modalCorpo"></div>
+    <div id="modalAcoes" class="modal-acoes"></div>
+  </div>
+</div>
+<div id="toasts"></div>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
