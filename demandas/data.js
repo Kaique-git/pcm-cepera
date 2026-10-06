@@ -1,4 +1,3 @@
-// demandas/data.js — Firebase do domínio Cepêra (mesmo projeto do SERAC 1, caminhos exclusivos)
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyAGbFTTCgbqe9XFKFSb6ltB5lYj5O6QipE",
