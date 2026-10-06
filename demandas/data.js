@@ -9,6 +9,7 @@ const firebaseConfig = {
   measurementId: "G-LW29TG8TJ4"
 };
 
+
 // Coleções EXCLUSIVAS deste sub-app (prefixo dm_ = Demandas) — não tocam no pcm_data/serac1
 window.FB_COLS = {
   demandas: 'dm_demandas',
@@ -19,7 +20,7 @@ window.FB_COLS = {
 
 window.db = null;
 window.firebaseAtivo = false;
-if (firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith("COLE_") && typeof firebase !== "undefined") {
+if (firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith("AIzaSyAGbFTTCgbqe9XFKFSb6ltB5lYj5O6QipE") && typeof firebase !== "undefined") {
   try {
     firebase.initializeApp(firebaseConfig);
     window.db = firebase.firestore();
