@@ -34,7 +34,7 @@ function confirmarModal(titulo, msg, aoConfirmar, rotulo = 'Confirmar') {
 }
 
 /* ================= 2. ESTADO E PADRÕES ================= */
-const CORES = { vermelho:'#ef4444', laranja:'#f97316', amarelo:'#eab308', verde:'#22c55e', azul:'#3b82f6', cinza:'#94a3b8' };
+const CORES = { vermelho:'#ef4444', laranja:'#f97316', amarelo:'#eab308', verde:'#22c55e', azul:'#3b82f6', roxo:'#a855f7', cinza:'#94a3b8' };
 const OPCOES_PADRAO = {
   status: [
     { nome:'Aberta', cor:'azul' }, { nome:'Em Execução', cor:'laranja' },
@@ -162,7 +162,7 @@ function initDados() {
 /* ================= 4. TEMA ================= */
 function aplicarTema(t) {
   document.body.classList.toggle('claro', t === 'claro');
-  const b = $('#btnTema'); if (b) b.textContent = t === 'claro' ? '🌙' : '☀️';
+  const b = $('#btnTema'); if (b) b.textContent = t === 'claro' ? '🌙 Escuro' : '☀️ Claro';
   localStorage.setItem('pcm_tema', t);
 }
 function alternarTema() {
@@ -277,8 +277,11 @@ function renderKPIs() {
   $('#kpiExec').textContent = demandas.filter(d => d.status === 'Em Execução').length;
   $('#kpiAtras').textContent = demandas.filter(estaAtrasada).length;
   $('#kpiMes').textContent = demandas.filter(d => isConcluida(d) && (d.concluidaEm || '').slice(0, 7) === mes).length;
-  const ab = $('#abTotal'); if (ab) ab.textContent = demandas.filter(isPendente).length;
-  const ab2 = $('#abTotal2'); if (ab2) ab2.textContent = demandas.length;
+  const set = (id, v) => { const el = $('#' + id); if (el) el.textContent = v; };
+  set('abTotal', demandas.filter(isPendente).length);
+  set('abConsulta', demandas.length);
+  set('abGraficos', demandas.length);
+  set('abCadastros', responsaveis.length + setores.length);
 }
 
 /* ================= 9. ABA DEMANDAS — LISTA ================= */
@@ -286,41 +289,51 @@ function renderDemandas() {
   const wrap = $('#listaDemandas'); if (!wrap) return;
   const lista = demandasFiltradas();
   if (!lista.length) {
-    wrap.innerHTML = `<div class="vazio"><h3>Nenhuma demanda encontrada</h3>
-      <p>Ajuste os filtros ou cadastre uma nova demanda de manutenção.</p></div>`;
+    wrap.innerHTML = `<div class="vazio"><h3>📋 Nenhuma demanda encontrada</h3>
+      <p>Tente ajustar seus filtros de busca ou cadastre uma nova ordem de manutenção.</p>
+      <button class="primario" onclick="abrirMDemanda()">➕ Cadastrar Demanda</button></div>`;
   } else {
     wrap.innerHTML = lista.map(d => {
       const atras = estaAtrasada(d);
       const anexos = (d.anexos || []).map(a =>
         `<span class="anexo-chip"><a href="${a.dado}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">📎 ${esc(a.nome)}</a></span>`).join('');
-      return `<div class="demanda" style="border-left-color:${corOpt(d.status, 'status')}">
+      return `<div class="demanda${atras ? ' atrasada' : ''}" style="border-left-color:${atras ? '' : corOpt(d.status, 'status')}">
         <div class="demanda-topo">
           <h4>${esc(d.titulo)}</h4>
-          <div>${badge('status', d.status)} ${badge('prioridade', d.prior)}</div>
+          <div>${badge('status', d.status)} ${badge('prioridade', d.prior)}${atras ? ' <span class="badge" style="background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.5)">⏰ ATRASADA</span>' : ''}</div>
         </div>
         <div class="demanda-meta">
           <span>👤 ${esc(d.resp || '—')}</span>
           <span>🏭 ${esc(d.setor || '—')}</span>
           <span>📅 Criada: ${fmtData(d.criadaEm)}</span>
-          <span class="${atras ? 'prazo-atrasado' : ''}">⏰ Prazo: ${fmtData(d.prazo)}${atras ? ' • ATRASADA' : ''}</span>
+          <span class="${atras ? 'prazo-atrasado' : ''}">⏰ Prazo: ${fmtData(d.prazo)}</span>
         </div>
-        ${d.descricao ? `<div class="demanda-desc">${esc(d.descricao)}</div>` : ''}
-        ${anexos ? `<div>${anexos}</div>` : ''}
         <div class="demanda-acoes">
           <span class="rotulo">Status:</span>${selectOpcoes('status', d.status, `mudarStatus('${d.id}', this.value)`)}
           <span class="rotulo">Prior:</span>${selectOpcoes('prioridade', d.prior, `mudarPrior('${d.id}', this.value)`)}
           <button onclick="editarDemanda('${d.id}')">📝 Editar</button>
           <button onclick="verHistorico('${d.id}')">🕘 Histórico</button>
           <button onclick="excluirDemanda('${d.id}')">🗑️</button>
+          <button class="btn-exp" onclick="toggleDemanda('${d.id}')">⬇️ Detalhes</button>
+        </div>
+        <div class="demanda-corpo" id="corpo-${d.id}" hidden>
+          ${d.descricao ? `<div class="demanda-desc">${esc(d.descricao)}</div>` : ''}
+          ${anexos ? `<div>${anexos}</div>` : '<div class="dica">Sem anexos nesta demanda.</div>'}
         </div>
       </div>`;
     }).join('');
   }
-  const cont = $('#fContador'); if (cont) cont.textContent = `Exibindo ${lista.length} de ${demandas.length} demanda(s)`;
+  const cont = $('#fContador'); if (cont) cont.textContent = `Exibindo ${lista.length} demandas`;
   $('#rkTotal').textContent = demandas.length;
   $('#rkAtras').textContent = demandas.filter(estaAtrasada).length;
   $('#rkAndam').textContent = demandas.filter(d => d.status === 'Em Execução').length;
   $('#rkConcl').textContent = demandas.filter(isConcluida).length;
+}
+function toggleDemanda(id) {
+  const c = $('#corpo-' + id); if (!c) return;
+  const oculto = c.toggleAttribute('hidden');
+  const btn = c.closest('.demanda').querySelector('.btn-exp');
+  if (btn) btn.textContent = oculto ? '⬇️ Detalhes' : '⬆️ Recolher';
 }
 function mudarStatus(id, valor) {
   const d = achar(id); if (!d) return;
@@ -436,12 +449,38 @@ function renderAnexosPendentes() {
   el.innerHTML = anexosPendentes.map((a, i) =>
     `<span class="anexo-chip">📎 ${esc(a.nome)}<button onclick="removerAnexoPendente(${i})">✖</button></span>`).join('');
 }
+/* --- Histórico & Andamentos (versão do Jhonatan: registra ocorrência + troca status) --- */
+let histId = null;
 function verHistorico(id) {
   const d = achar(id); if (!d) return;
+  histId = id;
   const evs = [...(d.historico || [])].reverse().map(h =>
     `<div class="evento"><div>${esc(h.texto)}</div><div class="data-ev">${fmtData(h.data)}</div></div>`).join('');
-  abrirModal(`Histórico — ${d.titulo}`, evs ? `<div class="linha-tempo">${evs}</div>` : '<p class="sub">Nenhum evento registrado.</p>',
+  abrirModal('🕐 Histórico & Andamentos', `
+    <p style="font-weight:700;margin-bottom:10px">${esc(d.titulo)}</p>
+    <label style="display:block;font-size:.85rem;color:var(--muted);margin:6px 0 4px">Novo Registro de Ocorrência / Andamento</label>
+    <textarea id="inpAndamento" rows="3" placeholder="Descreva o que aconteceu..."></textarea>
+    <label style="display:block;font-size:.85rem;color:var(--muted);margin:10px 0 4px">Alterar status para:</label>
+    <select id="selHistStatus"><option value="">Manter status atual (${esc(d.status)})</option>${(opcoes.status || []).map(o => `<option value="${esc(o.nome)}">${esc(o.nome)}</option>`).join('')}</select>
+    <button class="primario" style="margin:10px 0" onclick="addAndamento()">📝 Registrar Andamento</button>
+    <h4 style="margin:14px 0 8px">Linha do Tempo</h4>
+    ${evs ? `<div class="linha-tempo">${evs}</div>` : '<p class="sub">Nenhum evento registrado.</p>'}`,
     `<button class="primario" onclick="fecharModal()">Fechar</button>`);
+}
+function addAndamento() {
+  const d = achar(histId); if (!d) return;
+  const txt = $('#inpAndamento').value.trim();
+  const novoStatus = $('#selHistStatus').value;
+  if (!txt && (!novoStatus || novoStatus === d.status)) { toast('Nada para registrar', 'aviso'); return; }
+  if (txt) d.historico.push({ data: hojeISO(), texto: txt });
+  if (novoStatus && novoStatus !== d.status) {
+    d.status = novoStatus;
+    if (novoStatus === 'Concluída') d.concluidaEm = hojeISO(); else delete d.concluidaEm;
+    d.historico.push({ data: hojeISO(), texto: `Status alterado para "${novoStatus}"` });
+  }
+  d.atualizadaEm = hojeISO();
+  salvarColecao('demandas', demandas); fecharModal(); renderTudo();
+  toast('Andamento registrado');
 }
 
 /* ================= 11. ABA CONSULTA ================= */
@@ -506,6 +545,34 @@ function barraRow(rotulo, val, max, cor) {
     <div class="barra-fundo" title="${val}"><div class="barra" style="width:${pct}%;background:${cor}"></div></div>
     <span class="barra-valor">${val}</span></div>`;
 }
+function donut(titulo, pares, corFn) {
+  const total = pares.reduce((s, p) => s + p[1], 0);
+  const C = 2 * Math.PI * 60; // circunferência do anel (r=60)
+  let off = 0;
+  const segs = pares.map(([k, v]) => {
+    const frac = total ? v / total : 0;
+    const seg = `<circle r="60" cx="80" cy="80" fill="none" stroke="${corFn(k)}" stroke-width="26"
+      stroke-dasharray="${frac * C} ${C}" stroke-dashoffset="${-off}" transform="rotate(-90 80 80)"></circle>`;
+    off += frac * C;
+    return seg;
+  }).join('');
+  const legenda = pares.map(([k, v]) =>
+    `<div class="leg-item"><span class="leg-dot" style="background:${corFn(k)}"></span>
+     <span class="leg-nome" title="${esc(k)}">${esc(k)}</span>
+     <span class="leg-val">${v} · ${total ? Math.round(v / total * 100) : 0}%</span></div>`).join('');
+  return `<div class="grafico-card"><h3>${titulo}</h3>
+    <div class="donut-wrap">
+      <div class="donut-box"><svg viewBox="0 0 160 160">${segs}</svg>
+        <div class="donut-centro"><b>${total}</b><small>demandas</small></div></div>
+      <div class="donut-legenda">${legenda}</div>
+    </div></div>`;
+}
+function toggleFiltros() {
+  const p = $('#painelFiltros'); if (!p) return;
+  const ocultou = p.toggleAttribute('hidden');
+  const b = $('#btnToggleFiltros');
+  if (b) b.textContent = ocultou ? '🔍 Filtros' : '✖️ Fechar Filtros';
+}
 function renderGraficos() {
   const ind = $('#gIndicadores'), wrap = $('#gContainer');
   if (!ind || !wrap) return;
@@ -514,13 +581,100 @@ function renderGraficos() {
     wrap.innerHTML = '<div class="vazio"><h3>Sem dados para gráficos</h3></div>';
     return;
   }
-  const total = demandas.length, pend = demandas.filter(isPendente).length,
-    atras = demandas.filter(estaAtrasada).length, conc = demandas.filter(isConcluida).length;
+  const total = demandas.length, atras = demandas.filter(estaAtrasada).length;
+  const concl = demandas.filter(isConcluida);
+  const comPrazo = concl.filter(d => d.prazo);
+  const noPrazo = comPrazo.filter(d => d.concluidaEm && d.concluidaEm <= d.prazo).length;
+  const cumpr = comPrazo.length ? Math.round(noPrazo / comPrazo.length * 100) : 0;
+  const diasArr = concl.filter(d => d.criadaEm && d.concluidaEm)
+    .map(d => Math.max(0, Math.round((new Date(d.concluidaEm + 'T12:00:00') - new Date(d.criadaEm + 'T12:00:00')) / 86400000)));
+  const media = diasArr.length ? Math.round(diasArr.reduce((a, b) => a + b, 0) / diasArr.length) : 0;
+  const semAnexo = demandas.filter(d => !(d.anexos && d.anexos.length)).length;
   ind.innerHTML = `
-    <div class="kpi"><span>${total}</span><small>Total de Demandas</small></div>
-    <div class="kpi"><span>${pend}</span><small>Ativas</small></div>
-    <div class="kpi atras"><span>${atras}</span><small>Atrasadas</small></div>
-    <div class="kpi ok"><span>${total ? Math.round(conc / total * 100) : 0}%</span><small>Conclusão</small></div>`;
+    <div class="kpi"><span>${cumpr}%</span><small>Cumprimento de Prazo</small></div>
+    <div class="kpi"><span>${media} dias</span><small>Média de Conclusão</small></div>
+    <div class="kpi atras"><span>${atras}</span><small>Atrasadas Agora</small></div>
+    <div class="kpi"><span>${semAnexo}</span><small>Sem Anexo / Evidência</small></div>`;
+  const contar = chave => {
+    const m = {};
+    demandas.forEach(d => { const k = d[chave] || '—'; m[k] = (m[k] || 0) + 1; });
+    return Object.entries(m).sort((a, b) => b[1] - a[1]);
+  };
+  /* --- Roscas com porcentagem --- */
+  const pend = demandas.filter(isPendente).length;
+  const canc = demandas.filter(isCancelada).length;
+  const paresConcl = [];
+  if (concl.length) paresConcl.push(['Concluídas', concl.length]);
+  if (pend) paresConcl.push(['Pendentes', pend]);
+  if (canc) paresConcl.push(['Canceladas', canc]);
+  const roscas = `
+    <div class="grafico-grid">
+      ${donut('📊 Demandas por Status', contar('status'), k => corOpt(k, 'status'))}
+      ${donut('🔺 Demandas por Prioridade', contar('prior'), k => corOpt(k, 'prioridade'))}
+      ${donut('🎯 Taxa de Conclusão', paresConcl.length ? paresConcl : [['Sem dados', 1]],
+        k => k === 'Concluídas' ? '#22c55e' : k === 'Pendentes' ? '#3b82f6' : '#94a3b8')}
+    </div>`;
+  const bloco = (titulo, pares, cor) => {
+    const max = Math.max(...pares.map(p => p[1]), 1);
+    return `<div class="grafico-card"><h3>${titulo}</h3>${pares.map(([k, v]) => barraRow(k, v, max, cor)).join('')}</div>`;
+  };
+  const porResp = contar('resp');
+  const maxResp = Math.max(...porResp.map(p => p[1]), 1);
+  const linhasResp = porResp.map(([k, v]) => {
+    const atr = demandas.filter(d => (d.resp || '—') === k && estaAtrasada(d)).length;
+    const pct = Math.round(v / maxResp * 100), pctA = Math.round(atr / maxResp * 100);
+    return `<div class="barra-linha"><span>${esc(k)}</span>
+      <div><div class="barra-fundo" title="${v}"><div class="barra" style="width:${pct}%;background:#3b82f6"></div></div>
+      ${atr ? `<div class="barra-seg" style="width:${pctA}%"></div>` : ''}</div>
+      <span class="barra-valor">${v}</span></div>`;
+  }).join('');
+  const meses = [];
+  const base = new Date();
+  for (let i = 5; i >= 0; i--) {
+    const dt = new Date(base.getFullYear(), base.getMonth() - i, 1);
+    meses.push(`${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`);
+  }
+  const criadasMes = meses.map(m => demandas.filter(d => (d.criadaEm || '').startsWith(m)).length);
+  const concMes = meses.map(m => demandas.filter(d => (d.concluidaEm || '').startsWith(m)).length);
+  const maxMes = Math.max(...criadasMes, ...concMes, 1);
+  const barrasMes = meses.map((m, i) => {
+    const hC = Math.max(Math.round(criadasMes[i] / maxMes * 100), criadasMes[i] ? 6 : 2);
+    const hK = Math.max(Math.round(concMes[i] / maxMes * 100), concMes[i] ? 6 : 2);
+    const rot = m.slice(5) + '/' + m.slice(2, 4);
+    return `<div class="grupo-mes" title="${rot}: ${criadasMes[i]} criadas, ${concMes[i]} concluídas">
+      <div class="col-mes" style="height:${hK}%;background:#22c55e">${concMes[i] || ''}</div>
+      <div class="col-mes" style="height:${hC}%;background:#3b82f6">${criadasMes[i] || ''}</div>
+    </div>`;
+  }).join('');
+  wrap.innerHTML = `
+    ${roscas}
+    <div class="grafico-grid">
+      ${bloco('👤 Demandas por Responsável <small style="color:var(--muted)">(vermelho = atrasadas)</small>', porResp, '#3b82f6')}
+      ${bloco('🏭 Demandas por Setor', contar('setor'), '#22c55e')}
+    </div>
+    <div class="grafico-card"><h3>📅 Criadas vs Concluídas — últimos 6 meses</h3>
+      <div class="barras-mes">${barrasMes}</div>
+      <div class="legenda-mes">
+        <span class="legenda-item"><span class="legenda-dot" style="background:#3b82f6"></span> Criadas</span>
+        <span class="legenda-item"><span class="legenda-dot" style="background:#22c55e"></span> Concluídas</span>
+      </div>
+    </div>`;
+}
+  const total = demandas.length, atras = demandas.filter(estaAtrasada).length;
+  /* --- KPIs de desempenho (versão do Jhonatan) --- */
+  const concl = demandas.filter(isConcluida);
+  const comPrazo = concl.filter(d => d.prazo);
+  const noPrazo = comPrazo.filter(d => d.concluidaEm && d.concluidaEm <= d.prazo).length;
+  const cumpr = comPrazo.length ? Math.round(noPrazo / comPrazo.length * 100) : 0;
+  const diasArr = concl.filter(d => d.criadaEm && d.concluidaEm)
+    .map(d => Math.max(0, Math.round((new Date(d.concluidaEm + 'T12:00:00') - new Date(d.criadaEm + 'T12:00:00')) / 86400000)));
+  const media = diasArr.length ? Math.round(diasArr.reduce((a, b) => a + b, 0) / diasArr.length) : 0;
+  const semAnexo = demandas.filter(d => !(d.anexos && d.anexos.length)).length;
+  ind.innerHTML = `
+    <div class="kpi"><span>${cumpr}%</span><small>Cumprimento de Prazo</small></div>
+    <div class="kpi"><span>${media} dias</span><small>Média de Conclusão</small></div>
+    <div class="kpi atras"><span>${atras}</span><small>Atrasadas Agora</small></div>
+    <div class="kpi"><span>${semAnexo}</span><small>Sem Anexo / Evidência</small></div>`;
   const contar = chave => {
     const m = {};
     demandas.forEach(d => { const k = d[chave] || '—'; m[k] = (m[k] || 0) + 1; });
@@ -572,7 +726,6 @@ function renderGraficos() {
         <span class="legenda-item"><span class="legenda-dot" style="background:#22c55e"></span> Concluídas</span>
       </div>
     </div>`;
-}
 
 /* ================= 13. ABA CADASTROS ================= */
 function renderCadastros() {
@@ -628,9 +781,11 @@ function renderOpcoes() {
   if (!st || !pr) return;
   st.innerHTML = (opcoes.status || []).map((o, i) => `
     <div class="item-linha"><span>${badge('status', o.nome)}</span>
+     <button onclick="renomearOpcao('status', ${i})">✏️</button>
      <button onclick="excluirOpcao('status', ${i})">🗑️</button></div>`).join('');
   pr.innerHTML = (opcoes.prioridade || []).map((o, i) => `
     <div class="item-linha"><span>${badge('prioridade', o.nome)}</span>
+     <button onclick="renomearOpcao('prioridade', ${i})">✏️</button>
      <button onclick="excluirOpcao('prioridade', ${i})">🗑️</button></div>`).join('');
   const cores = Object.keys(CORES);
   const optsCor = sel => cores.map(c => `<option value="${c}" ${c === sel ? 'selected' : ''}>${c}</option>`).join('');
@@ -638,25 +793,83 @@ function renderOpcoes() {
   if (sc) sc.innerHTML = optsCor('azul');
   if (pc) pc.innerHTML = optsCor('verde');
 }
-function addOpcao(tipo) {
-  const inp = tipo === 'status' ? $('#oStatusNome') : $('#oPriorNome');
-  const corSel = tipo === 'status' ? ($('#oStatusCor').value || 'azul') : ($('#oPriorCor').value || 'verde');
-  const nome = inp.value.trim();
-  if (!nome) { toast('Informe o nome da opção', 'erro'); return; }
-  if (opcoes[tipo].some(o => o.nome.toLowerCase() === nome.toLowerCase())) { toast('Opção já existe', 'aviso'); return; }
-  opcoes[tipo].push({ nome, cor: corSel });
-  inp.value = '';
-  salvarColecao('opcoes', opcoes); renderTudo();
-  toast('Opção adicionada');
+/* --- Renomear Opção (versão do Jhonatan: nome + cor + preview + atualização em lote) --- */
+function badgeCor(nome, cor) {
+  const c = CORES[cor] || CORES.cinza;
+  return `<span class="badge" style="background:${c}22;color:${c};border:1px solid ${c}66">${esc(nome)}</span>`;
 }
+function renomearOpcao(tipo, i) {
+  const o = (opcoes[tipo] || [])[i]; if (!o) return;
+  const cores = Object.keys(CORES);
+  abrirModal('✏️ Renomear Opção', `
+    <label style="display:block;font-size:.85rem;color:var(--muted);margin:6px 0 4px">Nome da Opção *</label>
+    <input id="inpRenomear" value="${esc(o.nome)}">
+    <label style="display:block;font-size:.85rem;color:var(--muted);margin:10px 0 4px">Cor Semântica do Badge</label>
+    <select id="selRenomearCor">${cores.map(c => `<option value="${c}" ${c === o.cor ? 'selected' : ''}>${c}</option>`).join('')}</select>
+    <div style="margin:10px 0"><span style="font-size:.8rem;color:var(--muted)">Visualização:</span> <span id="prevRenomear">${badgeCor(o.nome, o.cor)}</span></div>`,
+    `<button onclick="fecharModal()">Cancelar</button>
+     <button class="primario" onclick="salvarRenomear('${tipo}', ${i})">Salvar Alteração</button>`);
+  const atualiza = () => { $('#prevRenomear').innerHTML = badgeCor($('#inpRenomear').value, $('#selRenomearCor').value); };
+  $('#inpRenomear').oninput = atualiza;
+  $('#selRenomearCor').onchange = atualiza;
+}
+function salvarRenomear(tipo, i) {
+  const o = (opcoes[tipo] || [])[i]; if (!o) return;
+  const novo = $('#inpRenomear').value.trim();
+  const cor = $('#selRenomearCor').value;
+  if (!novo) { toast('Informe o nome da opção', 'erro'); return; }
+  if (opcoes[tipo].some((x, j) => j !== i && x.nome.toLowerCase() === novo.toLowerCase())) { toast('Já existe uma opção com esse nome', 'aviso'); return; }
+  const antigo = o.nome;
+  o.nome = novo; o.cor = cor;
+  const campo = tipo === 'status' ? 'status' : 'prior';
+  let afetadas = 0;
+  demandas.forEach(d => {
+    if (d[campo] === antigo) { d[campo] = novo; registrarHist(d, `Opção "${antigo}" renomeada para "${novo}"`); afetadas++; }
+  });
+  salvarColecao('opcoes', opcoes);
+  if (afetadas) salvarColecao('demandas', demandas);
+  fecharModal(); renderTudo();
+  toast(afetadas ? `Renomeado — ${afetadas} demanda(s) atualizada(s)` : 'Opção renomeada');
+}
+/* --- Excluir Opção com fluxo de conflito: substituto ou manter texto (versão do Jhonatan) --- */
+let _excTipo = null, _excIdx = null;
 function excluirOpcao(tipo, i) {
   const o = (opcoes[tipo] || [])[i]; if (!o) return;
   const campo = tipo === 'status' ? 'status' : 'prior';
-  if (demandas.some(d => d[campo] === o.nome)) {
-    toast('Opção em uso por demandas — não pode ser removida', 'erro'); return;
+  const emUso = demandas.filter(d => d[campo] === o.nome).length;
+  if (!emUso) {
+    confirmarModal('Excluir Opção', `Remover a opção "${o.nome}"?`, () => {
+      opcoes[tipo].splice(i, 1);
+      salvarColecao('opcoes', opcoes); renderTudo();
+      toast('Opção removida', 'aviso');
+    }, 'Excluir');
+    return;
   }
-  opcoes[tipo].splice(i, 1);
-  salvarColecao('opcoes', opcoes); renderTudo();
+  const outros = opcoes[tipo].filter((_, j) => j !== i);
+  if (!outros.length) { toast('Não é possível excluir — é a única opção e está em uso', 'erro'); return; }
+  _excTipo = tipo; _excIdx = i;
+  abrirModal('⚠️ Atenção: Item em Uso', `
+    <p style="font-size:.9rem">A opção <b>${esc(o.nome)}</b> está associada a <b>${emUso}</b> demanda(s).<br>Selecione o substituto para as demandas vinculadas:</p>
+    <select id="selSubstituto">${outros.map(x => `<option value="${esc(x.nome)}">${esc(x.nome)}</option>`).join('')}</select>`,
+    `<button onclick="fecharModal()">Cancelar</button>
+     <button onclick="excluirOpcaoFinal('manter')">Manter Texto Existente</button>
+     <button class="primario" onclick="excluirOpcaoFinal('substituir')">Substituir & Excluir</button>`);
+}
+function excluirOpcaoFinal(modo) {
+  const o = (opcoes[_excTipo] || [])[_excIdx]; if (!o) return;
+  const campo = _excTipo === 'status' ? 'status' : 'prior';
+  if (modo === 'substituir') {
+    const sub = $('#selSubstituto').value;
+    let n = 0;
+    demandas.forEach(d => {
+      if (d[campo] === o.nome) { d[campo] = sub; registrarHist(d, `Opção "${o.nome}" substituída por "${sub}"`); n++; }
+    });
+    if (n) salvarColecao('demandas', demandas);
+    toast(`${n} demanda(s) migrada(s) para "${sub}"`);
+  }
+  opcoes[_excTipo].splice(_excIdx, 1);
+  salvarColecao('opcoes', opcoes);
+  fecharModal(); renderTudo();
   toast('Opção removida', 'aviso');
 }
 function restaurarOpcoes() {
